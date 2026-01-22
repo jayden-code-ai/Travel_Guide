@@ -160,6 +160,46 @@ def inject_response_css():
             }
         }
         </style>
+        
+        <script>
+        // 모바일 사이드바 자동 닫기 스크립트
+        function closeSidebarOnMobile() {
+            const menuLinks = parent.document.querySelectorAll('[data-testid="stSidebarNav"] a, .nav-link');
+            menuLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    // 화면 너비가 768px 이하(모바일)일 때만 실행
+                    if (parent.window.innerWidth <= 768) {
+                        try {
+                            const closeBtn = parent.document.querySelector('[data-testid="stSidebar"] button[kind="secondary"]');
+                            if (closeBtn) {
+                                closeBtn.click();
+                            } else {
+                                // 닫기 버튼을 찾을 수 없는 경우(이미 닫혀있거나 다른 구조), data-testid="stSidebar"의 상태 확인 후 닫기 시도 (X 버튼이 보통 첫번째 버튼)
+                                const sidebar = parent.document.querySelector('[data-testid="stSidebar"]');
+                                // React props 접근이 어려우므로 버튼 클릭 시뮬레이션이 가장 확실
+                                const toggleBtn = parent.document.querySelector('[data-testid="baseButton-header"]'); // 모바일 상단 햄버거 메뉴/닫기 버튼
+                                if(toggleBtn && sidebar && getComputedStyle(sidebar).transform === "none") {
+                                     // 열려있는 상태라면 토글 버튼 클릭 (닫기)
+                                    toggleBtn.click();
+                                }
+                            }
+                        } catch (e) {
+                            console.log("Sidebar auto-close failed", e);
+                        }
+                    }
+                });
+            });
+            
+            // streamlit-option-menu 특성상 iframe 내부에서 동작할 수 있으므로, 
+            // 상위 window의 이벤트를 감지하거나 반복적으로 리스너를 붙여야 할 수 있음.
+            // 여기서는 간단히 로드 시점과 일정 주기마다 리스너 부착 시도
+        }
+        
+        // DOM 로드 완료 시 실행
+        setTimeout(closeSidebarOnMobile, 1000); 
+        // 동적 렌더링 대응을 위해 3초 후 한번 더 실행
+        setTimeout(closeSidebarOnMobile, 3000);
+        </script>
         """,
         unsafe_allow_html=True,
     )

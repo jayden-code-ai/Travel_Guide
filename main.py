@@ -27,10 +27,10 @@ def main():
             menu_icon="cast",
             default_index=0,
             styles={
-                "container": {"padding": "5!important", "background-color": "#fffbf7"},
-                "icon": {"color": "#d35400", "font-size": "25px"}, 
-                "nav-link": {"font-size": "16px", "text-align": "left", "margin":"0px", "--hover-color": "#eee"},
-                "nav-link-selected": {"background-color": "#ffe4c7", "color": "#d35400"},
+                "container": {"padding": "5!important", "background-color": "var(--sidebar-bg)"},
+                "icon": {"color": "var(--title-color)", "font-size": "25px"}, 
+                "nav-link": {"font-size": "16px", "text-align": "left", "margin":"0px", "--hover-color": "var(--pill-bg)", "color": "var(--text-color)"},
+                "nav-link-selected": {"background-color": "var(--pill-bg)", "color": "var(--pill-text)"},
             }
         )
         
