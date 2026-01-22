@@ -40,17 +40,21 @@ def render():
                 )
             
             if audio and audio.get("bytes"):
-                st.audio(audio["bytes"], format="audio/wav")
-                if st.button("음성 → 텍스트 변환"):
+                # Check if this is new audio
+                if audio["bytes"] != st.session_state.get("last_mic_audio"):
+                    st.session_state["last_mic_audio"] = audio["bytes"]
+                    st.audio(audio["bytes"], format="audio/wav")
+                    
+                    # Auto Transcribe
                     lang_code = "ko" if source_lang == "Korean" else "ja"
-                    with st.spinner("듣고 있어요..."):
+                    with st.spinner("음성을 텍스트로 변환 중..."):
                         transcript = openai_helper.transcribe_audio(
                             audio["bytes"], 
                             config.OPENAI_API_KEY, 
                             config.OPENAI_STT_MODEL, 
                             lang_code
                         )
-                        st.session_state["source_text"] = transcript
+                        st.session_state["source_text_input"] = transcript
                         st.rerun()
 
         st.divider()
@@ -58,7 +62,8 @@ def render():
         # Text Input & Result
         col1, col2 = st.columns(2)
         with col1:
-            source_text = st.text_area("입력", height=150, key="source_text", placeholder="번역할 내용을 입력하세요.")
+             # Widget will pick up value from st.session_state["source_text_input"]
+            source_text = st.text_area("입력", height=150, key="source_text_input", placeholder="번역할 내용을 입력하세요.")
         with col2:
             st.text_area(
                 "결과", 
