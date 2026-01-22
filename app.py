@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import base64
 import io
 import os
 import re
-from datetime import date, datetime, time
+import time
+from datetime import date, datetime, time as dt_time
 from pathlib import Path
 from typing import Optional
 from urllib.parse import quote_plus
@@ -31,6 +33,7 @@ SECRETS_PATHS = [
 
 APP_TITLE = "지민쓰와 떠나는 후쿠오카 찐친 패밀리 투어"
 TRIP_YEAR = 2026
+AUTO_TRANSLATE_COOLDOWN_SEC = 1.2
 
 EXPECTED_COLS = ["날짜", "시간", "구분", "내용", "장소", "지도검색어", "이동수단"]
 NOTE_KEYWORDS = {
@@ -63,6 +66,13 @@ def load_env() -> None:
 
 def secrets_file_exists() -> bool:
     return any(path.exists() for path in SECRETS_PATHS)
+
+
+def normalize_model_name(name: str) -> str:
+    cleaned = name.strip()
+    if not cleaned:
+        return cleaned
+    return cleaned.lower().replace(" ", "-")
 
 
 def get_secret(name: str, default: str = "") -> str:
@@ -117,7 +127,7 @@ def parse_date(raw: str) -> Optional[date]:
         return None
 
 
-def parse_time(raw: str) -> Optional[time]:
+def parse_time(raw: str) -> Optional[dt_time]:
     if not raw:
         return None
     match = re.search(r"(\d{1,2}):(\d{2})", raw)
@@ -125,17 +135,17 @@ def parse_time(raw: str) -> Optional[time]:
         return None
     hour, minute = int(match.group(1)), int(match.group(2))
     try:
-        return time(hour, minute)
+        return dt_time(hour, minute)
     except ValueError:
         return None
 
 
-def time_bucket(t: Optional[time]) -> str:
+def time_bucket(t: Optional[dt_time]) -> str:
     if not t:
         return "기타"
-    if t < time(12, 0):
+    if t < dt_time(12, 0):
         return "오전"
-    if t < time(18, 0):
+    if t < dt_time(18, 0):
         return "오후"
     return "저녁"
 
@@ -211,6 +221,8 @@ def translate_text(text: str, source_lang: str, target_lang: str, api_key: str, 
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
+        max_output_tokens=400,
+        temperature=0.2,
     )
     return response.output_text.strip()
 
@@ -240,6 +252,35 @@ def text_to_speech(text: str, api_key: str, model: str, voice: str) -> bytes:
         input=text,
     )
     return response.content
+
+
+def extract_text_from_image(
+    image_bytes: bytes, mime_type: str, api_key: str, model: str
+) -> str:
+    if not OpenAI:
+        raise RuntimeError("openai 패키지가 설치되어 있지 않습니다.")
+    client = OpenAI(api_key=api_key)
+    data_url = f"data:{mime_type};base64,{base64.b64encode(image_bytes).decode('utf-8')}"
+    prompt = (
+        "Extract all visible text from this image. "
+        "Preserve line breaks. Return only the text. "
+        "If no text is visible, return an empty string."
+    )
+    response = client.responses.create(
+        model=model,
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": prompt},
+                    {"type": "input_image", "image_url": data_url},
+                ],
+            }
+        ],
+        max_output_tokens=400,
+        temperature=0,
+    )
+    return response.output_text.strip()
 
 
 def inject_css() -> None:
@@ -425,12 +466,40 @@ def render_map_section(maps_api_key: str, df: pd.DataFrame) -> None:
 
 
 def render_translate_section(
-    api_key: str, model: str, stt_model: str, tts_model: str, tts_voice: str
+    api_key: str,
+    model: str,
+    stt_model: str,
+    tts_model: str,
+    tts_voice: str,
+    translate_model: str,
+    ocr_model: str,
 ) -> None:
     st.markdown("<div class='section-title'>🗣️ 번역</div>", unsafe_allow_html=True)
     st.caption("한국어 ↔ 일본어 전용 번역기")
 
     direction = st.radio("번역 방향", ["한국어 → 일본어", "일본어 → 한국어"], horizontal=True)
+    def _do_translate(text: str) -> Optional[str]:
+        if not api_key:
+            st.error("OpenAI API 키가 필요합니다. .env 또는 Secrets를 확인해주세요.")
+            return None
+        if not translate_model:
+            st.error("번역 모델이 비어있어요. OPENAI_TRANSLATE_MODEL을 설정해주세요.")
+            return None
+        source_lang = "Korean" if direction.startswith("한국어") else "Japanese"
+        target_lang = "Japanese" if direction.startswith("한국어") else "Korean"
+        cache = st.session_state.setdefault("translation_cache", {})
+        cache_key = f"{source_lang}->{target_lang}:{text}"
+        if cache_key in cache:
+            return cache[cache_key]
+        with st.spinner("번역 중..."):
+            try:
+                translated = translate_text(text, source_lang, target_lang, api_key, translate_model)
+            except Exception as exc:  # pragma: no cover - network
+                st.error(f"번역 실패: {exc}")
+                return None
+        cache[cache_key] = translated
+        return translated
+
     st.divider()
     st.markdown("**🎙️ 음성 입력 (선택)**")
     st.caption("마이크로 입력한 내용을 자동으로 텍스트로 변환해요.")
@@ -467,6 +536,47 @@ def render_translate_section(
                         st.session_state["source_text"] = transcript
 
     st.divider()
+    st.markdown("**📷 사진 번역 (수동)**")
+    st.caption("카메라 촬영 또는 이미지 업로드 후 버튼을 눌러 번역하세요.")
+    col_cam, col_up = st.columns(2)
+    with col_cam:
+        camera_image = st.camera_input("카메라 촬영")
+    with col_up:
+        upload_image = st.file_uploader(
+            "이미지 업로드",
+            type=["png", "jpg", "jpeg", "webp"],
+            accept_multiple_files=False,
+        )
+
+    image_file = camera_image or upload_image
+    if image_file is not None:
+        st.image(image_file, use_column_width=True)
+
+    if st.button("사진에서 번역하기"):
+        if not api_key:
+            st.error("OpenAI API 키가 필요합니다. .env 또는 Secrets를 확인해주세요.")
+        elif not ocr_model:
+            st.error("OCR 모델이 비어있어요. OPENAI_OCR_MODEL을 설정해주세요.")
+        elif image_file is None:
+            st.warning("먼저 카메라 촬영 또는 이미지 업로드를 해주세요.")
+        else:
+            with st.spinner("이미지 텍스트 추출 중..."):
+                try:
+                    image_bytes = image_file.getvalue()
+                    mime_type = getattr(image_file, "type", None) or "image/jpeg"
+                    ocr_text = extract_text_from_image(image_bytes, mime_type, api_key, ocr_model)
+                except Exception as exc:  # pragma: no cover - network
+                    st.error(f"OCR 실패: {exc}")
+                    ocr_text = ""
+            if not ocr_text.strip():
+                st.warning("이미지에서 텍스트를 찾지 못했어요. 다른 사진을 시도해보세요.")
+            else:
+                st.session_state["source_text"] = ocr_text
+                translated = _do_translate(ocr_text.strip())
+                if translated is not None:
+                    st.session_state["translation_result"] = translated
+
+    st.divider()
     col1, col2 = st.columns(2)
     with col1:
         source_text = st.text_area(
@@ -483,25 +593,30 @@ def render_translate_section(
             disabled=True,
         )
 
+    auto_translate = st.toggle(
+        "자동 번역 (입력 변경 시)",
+        value=False,
+        help="입력할 때마다 자동으로 번역합니다. 속도/비용이 늘 수 있어요.",
+    )
+
     if st.button("번역하기", type="primary"):
         if not source_text.strip():
             st.warning("번역할 문장을 입력해주세요.")
             return
-        if not api_key:
-            st.error("OpenAI API 키가 필요합니다. .env를 확인해주세요.")
-            return
-        if not model:
-            st.error("모델 이름이 비어있어요. OPENAI_MODEL을 설정해주세요.")
-            return
-        source_lang = "Korean" if direction.startswith("한국어") else "Japanese"
-        target_lang = "Japanese" if direction.startswith("한국어") else "Korean"
-        with st.spinner("번역 중..."):
-            try:
-                translated = translate_text(source_text, source_lang, target_lang, api_key, model)
-            except Exception as exc:  # pragma: no cover - network
-                st.error(f"번역 실패: {exc}")
-                return
-        st.session_state["translation_result"] = translated
+        translated = _do_translate(source_text.strip())
+        if translated is not None:
+            st.session_state["translation_result"] = translated
+
+    if auto_translate and source_text.strip():
+        last_text = st.session_state.get("last_auto_translate_text", "")
+        last_time = st.session_state.get("last_auto_translate_time", 0.0)
+        now = time.time()
+        if source_text.strip() != last_text and now - last_time >= AUTO_TRANSLATE_COOLDOWN_SEC:
+            translated = _do_translate(source_text.strip())
+            if translated is not None:
+                st.session_state["translation_result"] = translated
+                st.session_state["last_auto_translate_text"] = source_text.strip()
+                st.session_state["last_auto_translate_time"] = now
 
     st.divider()
     st.markdown("**🔊 번역 결과 음성 (선택)**")
@@ -525,6 +640,9 @@ def render_translate_section(
             return
         if not tts_model:
             st.error("TTS 모델이 비어있어요. OPENAI_TTS_MODEL을 설정해주세요.")
+            return
+        if tts_model == "gpt-5-mini-tts":
+            st.error("gpt-5-mini-tts는 지원되지 않습니다. gpt-4o-mini-tts 또는 tts-1/tts-1-hd를 사용하세요.")
             return
         with st.spinner("음성 생성 중..."):
             try:
@@ -569,9 +687,11 @@ def main() -> None:
     st.title(APP_TITLE)
 
     api_key = get_secret("OPENAI_API_KEY")
-    model = get_secret("OPENAI_MODEL", "gpt-4o")
-    stt_model = get_secret("OPENAI_STT_MODEL", "whisper-1")
-    tts_model = get_secret("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+    model = normalize_model_name(get_secret("OPENAI_MODEL", "gpt-4o-mini"))
+    translate_model = normalize_model_name(get_secret("OPENAI_TRANSLATE_MODEL", "gpt-4o-mini"))
+    stt_model = normalize_model_name(get_secret("OPENAI_STT_MODEL", "whisper-1"))
+    ocr_model = normalize_model_name(get_secret("OPENAI_OCR_MODEL", "gpt-4o-mini"))
+    tts_model = normalize_model_name(get_secret("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"))
     tts_voice = get_secret("OPENAI_TTS_VOICE", "alloy")
     maps_api_key = get_secret("GOOGLE_MAPS_API_KEY")
 
@@ -584,7 +704,15 @@ def main() -> None:
     elif section == "지도":
         render_map_section(maps_api_key, df)
     elif section == "번역":
-        render_translate_section(api_key, model, stt_model, tts_model, tts_voice)
+        render_translate_section(
+            api_key,
+            model,
+            stt_model,
+            tts_model,
+            tts_voice,
+            translate_model,
+            ocr_model,
+        )
 
 
 if __name__ == "__main__":
