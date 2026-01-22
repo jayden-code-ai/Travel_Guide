@@ -8,7 +8,16 @@ def render():
     st.caption("일정에 포함된 장소를 지도에서 확인하세요.")
 
     df = data_manager.load_schedule()
-    unique_places = sorted({p for p in df["장소"].dropna().tolist() if p.strip()})
+    unique_places = sorted({
+        q for q in df.apply(
+            lambda row: data_manager.choose_map_query(
+                row.get("내용", ""), 
+                row.get("장소", ""), 
+                row.get("지도검색어", "")
+            ),
+            axis=1
+        ) if q.strip()
+    })
     
     col1, col2 = st.columns([1, 2])
     
