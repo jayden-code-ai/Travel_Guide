@@ -4,18 +4,27 @@ from utils import data_manager
 import config
 
 def render():
-    st.markdown("<div class='section-title'>💰 N빵 정산</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>💰 지출 기록</div>", unsafe_allow_html=True)
     
-    tab_calc, tab_log = st.tabs(["🧮 1/N 계산기", "📝 지출 기록"])
+    tab_calc, tab_log = st.tabs(["💱 환율 계산기", "📝 지출 내역"])
     
     with tab_calc:
-        st.subheader("간편 계산기")
-        total = st.number_input("총 금액 (엔/원)", min_value=0, step=100)
-        people = st.number_input("인원 수", min_value=1, value=5, step=1)
+        st.subheader("엔화(JPY) ↔ 원화(KRW) 간편 계산")
+        st.caption("고정 환율: 100엔 = 900원 (대략적 계산용)")
         
-        if total > 0:
-            per_person = total / people
-            st.success(f"한 사람당: **{per_person:,.0f}**")
+        # Simple Exchange Rate Logic
+        EXCHANGE_RATE = 9.0  # 100 JPY = 900 KRW -> 1 JPY = 9 KRW
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            jpy = st.number_input("엔화 (¥)", min_value=0, step=100, value=1000)
+            krw_converted = jpy * EXCHANGE_RATE
+            st.metric("원화 환산 (약)", f"{krw_converted:,.0f}원")
+            
+        with col2:
+            krw = st.number_input("원화 (₩)", min_value=0, step=1000, value=10000)
+            jpy_converted = krw / EXCHANGE_RATE
+            st.metric("엔화 환산 (약)", f"{jpy_converted:,.0f}엔")
             
     with tab_log:
         st.subheader("지출 내역")

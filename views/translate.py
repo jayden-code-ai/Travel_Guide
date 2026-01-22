@@ -60,7 +60,12 @@ def render():
         with col1:
             source_text = st.text_area("입력", height=150, key="source_text", placeholder="번역할 내용을 입력하세요.")
         with col2:
-            st.text_area("결과", height=150, key="trans_result", disabled=True)
+            st.text_area(
+                "결과", 
+                height=150, 
+                value=st.session_state.get("trans_result", ""),
+                disabled=True
+            )
 
         col_act1, col_act2 = st.columns([1, 3])
         with col_act1:

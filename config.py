@@ -12,6 +12,7 @@ DATA_DIR = BASE_DIR / "data"
 SCHEDULE_PATH = DATA_DIR / "schedule.csv"
 BACKUP_PATH = DATA_DIR / "schedule.backup.csv"
 EXPENSES_PATH = DATA_DIR / "expenses.csv"
+CANDIDATES_PATH = DATA_DIR / "candidates.csv"
 PHOTOS_DIR = DATA_DIR / "photos"
 
 # App Configuration

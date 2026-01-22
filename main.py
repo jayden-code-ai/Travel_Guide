@@ -22,8 +22,8 @@ def main():
         
         selected = option_menu(
             "메뉴",
-            ["일정 View", "지도 View", "AI 통역사", "날씨 예보", "N빵 정산", "추억 앨범"],
-            icons=["calendar-check", "map", "translate", "cloud-sun", "calculator", "images"],
+            ["일정 View", "지도 View", "AI 통역사", "날씨 예보", "지출 기록", "추억 앨범"],
+            icons=["calendar-check", "map", "translate", "cloud-sun", "receipt", "images"],
             menu_icon="cast",
             default_index=0,
             styles={
@@ -53,7 +53,7 @@ def main():
         translate.render()
     elif selected == "날씨 예보":
         weather.render()
-    elif selected == "N빵 정산":
+    elif selected == "지출 기록":
         expenses.render()
     elif selected == "추억 앨범":
         gallery.render()

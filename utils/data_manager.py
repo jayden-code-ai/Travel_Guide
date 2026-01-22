@@ -111,3 +111,13 @@ def time_bucket(t: Optional[dt_time]) -> str:
     if t < dt_time(18, 0):
         return "오후"
     return "저녁"
+
+def load_candidates() -> pd.DataFrame:
+    """Load candidates data from CSV."""
+    if not config.CANDIDATES_PATH.exists():
+        return pd.DataFrame(columns=["장소명", "지도링크"])
+    return pd.read_csv(config.CANDIDATES_PATH, dtype=str).fillna("")
+
+def save_candidates(df: pd.DataFrame) -> None:
+    """Save candidates data to CSV."""
+    df.to_csv(config.CANDIDATES_PATH, index=False)
