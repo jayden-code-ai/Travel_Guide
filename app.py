@@ -478,6 +478,7 @@ def render_translate_section(
     st.caption("한국어 ↔ 일본어 전용 번역기")
 
     direction = st.radio("번역 방향", ["한국어 → 일본어", "일본어 → 한국어"], horizontal=True)
+
     def _do_translate(text: str) -> Optional[str]:
         if not api_key:
             st.error("OpenAI API 키가 필요합니다. .env 또는 Secrets를 확인해주세요.")
@@ -500,157 +501,184 @@ def render_translate_section(
         cache[cache_key] = translated
         return translated
 
-    st.divider()
-    st.markdown("**🎙️ 음성 입력 (선택)**")
-    st.caption("마이크로 입력한 내용을 자동으로 텍스트로 변환해요.")
+    tab_text, tab_photo = st.tabs(["💬 텍스트 번역", "📷 사진 번역"])
 
-    if mic_recorder is None:
-        st.info("음성 입력을 사용하려면 `pip install streamlit-mic-recorder`가 필요합니다.")
-    else:
-        audio = mic_recorder(
-            start_prompt="🎙️ 녹음 시작",
-            stop_prompt="⏹️ 녹음 종료",
-            just_once=True,
-            key="mic_recorder",
-        )
-        if audio and audio.get("bytes"):
-            st.session_state["mic_audio"] = audio["bytes"]
-            st.audio(audio["bytes"], format="audio/wav")
-        if st.button("음성 → 텍스트 변환"):
-            if not api_key:
-                st.error("OpenAI API 키가 필요합니다. .env를 확인해주세요.")
-            elif not stt_model:
-                st.error("STT 모델이 비어있어요. OPENAI_STT_MODEL을 설정해주세요.")
-            elif not st.session_state.get("mic_audio"):
-                st.warning("먼저 음성을 녹음해주세요.")
-            else:
-                language = "ko" if direction.startswith("한국어") else "ja"
-                with st.spinner("음성 인식 중..."):
-                    try:
-                        transcript = transcribe_audio(
-                            st.session_state["mic_audio"], api_key, stt_model, language
-                        )
-                    except Exception as exc:  # pragma: no cover - network
-                        st.error(f"음성 인식 실패: {exc}")
-                    else:
-                        st.session_state["source_text"] = transcript
+    with tab_text:
+        st.markdown("**🎙️ 음성 입력 (선택)**")
+        st.caption("마이크로 입력한 내용을 자동으로 텍스트로 변환해요.")
 
-    st.divider()
-    st.markdown("**📷 사진 번역 (수동)**")
-    st.caption("카메라 촬영 또는 이미지 업로드 후 버튼을 눌러 번역하세요.")
-    col_cam, col_up = st.columns(2)
-    with col_cam:
-        camera_image = st.camera_input("카메라 촬영")
-    with col_up:
-        upload_image = st.file_uploader(
-            "이미지 업로드",
-            type=["png", "jpg", "jpeg", "webp"],
-            accept_multiple_files=False,
-        )
-
-    image_file = camera_image or upload_image
-    if image_file is not None:
-        st.image(image_file, use_column_width=True)
-
-    if st.button("사진에서 번역하기"):
-        if not api_key:
-            st.error("OpenAI API 키가 필요합니다. .env 또는 Secrets를 확인해주세요.")
-        elif not ocr_model:
-            st.error("OCR 모델이 비어있어요. OPENAI_OCR_MODEL을 설정해주세요.")
-        elif image_file is None:
-            st.warning("먼저 카메라 촬영 또는 이미지 업로드를 해주세요.")
+        if mic_recorder is None:
+            st.info("음성 입력을 사용하려면 `pip install streamlit-mic-recorder`가 필요합니다.")
         else:
-            with st.spinner("이미지 텍스트 추출 중..."):
-                try:
-                    image_bytes = image_file.getvalue()
-                    mime_type = getattr(image_file, "type", None) or "image/jpeg"
-                    ocr_text = extract_text_from_image(image_bytes, mime_type, api_key, ocr_model)
-                except Exception as exc:  # pragma: no cover - network
-                    st.error(f"OCR 실패: {exc}")
-                    ocr_text = ""
-            if not ocr_text.strip():
-                st.warning("이미지에서 텍스트를 찾지 못했어요. 다른 사진을 시도해보세요.")
-            else:
-                st.session_state["source_text"] = ocr_text
-                translated = _do_translate(ocr_text.strip())
-                if translated is not None:
-                    st.session_state["translation_result"] = translated
+            audio = mic_recorder(
+                start_prompt="🎙️ 녹음 시작",
+                stop_prompt="⏹️ 녹음 종료",
+                just_once=True,
+                key="mic_recorder",
+            )
+            if audio and audio.get("bytes"):
+                st.session_state["mic_audio"] = audio["bytes"]
+                st.audio(audio["bytes"], format="audio/wav")
+            if st.button("음성 → 텍스트 변환"):
+                if not api_key:
+                    st.error("OpenAI API 키가 필요합니다. .env를 확인해주세요.")
+                elif not stt_model:
+                    st.error("STT 모델이 비어있어요. OPENAI_STT_MODEL을 설정해주세요.")
+                elif not st.session_state.get("mic_audio"):
+                    st.warning("먼저 음성을 녹음해주세요.")
+                else:
+                    language = "ko" if direction.startswith("한국어") else "ja"
+                    with st.spinner("음성 인식 중..."):
+                        try:
+                            transcript = transcribe_audio(
+                                st.session_state["mic_audio"], api_key, stt_model, language
+                            )
+                        except Exception as exc:  # pragma: no cover - network
+                            st.error(f"음성 인식 실패: {exc}")
+                        else:
+                            st.session_state["source_text"] = transcript
 
-    st.divider()
-    col1, col2 = st.columns(2)
-    with col1:
-        source_text = st.text_area(
-            "원문",
-            height=180,
-            key="source_text",
-            placeholder="여기에 입력",
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            source_text = st.text_area(
+                "원문",
+                height=180,
+                key="source_text",
+                placeholder="여기에 입력",
+            )
+        with col2:
+            result_text = st.text_area(
+                "번역 결과",
+                height=180,
+                value=st.session_state.get("translation_result", ""),
+                disabled=True,
+            )
+
+        auto_translate = st.toggle(
+            "자동 번역 (입력 변경 시)",
+            value=False,
+            help="입력할 때마다 자동으로 번역합니다. 속도/비용이 늘 수 있어요.",
         )
-    with col2:
-        result_text = st.text_area(
-            "번역 결과",
-            height=180,
-            value=st.session_state.get("translation_result", ""),
-            disabled=True,
-        )
 
-    auto_translate = st.toggle(
-        "자동 번역 (입력 변경 시)",
-        value=False,
-        help="입력할 때마다 자동으로 번역합니다. 속도/비용이 늘 수 있어요.",
-    )
-
-    if st.button("번역하기", type="primary"):
-        if not source_text.strip():
-            st.warning("번역할 문장을 입력해주세요.")
-            return
-        translated = _do_translate(source_text.strip())
-        if translated is not None:
-            st.session_state["translation_result"] = translated
-
-    if auto_translate and source_text.strip():
-        last_text = st.session_state.get("last_auto_translate_text", "")
-        last_time = st.session_state.get("last_auto_translate_time", 0.0)
-        now = time.time()
-        if source_text.strip() != last_text and now - last_time >= AUTO_TRANSLATE_COOLDOWN_SEC:
+        if st.button("번역하기", type="primary"):
+            if not source_text.strip():
+                st.warning("번역할 문장을 입력해주세요.")
+                return
             translated = _do_translate(source_text.strip())
             if translated is not None:
                 st.session_state["translation_result"] = translated
-                st.session_state["last_auto_translate_text"] = source_text.strip()
-                st.session_state["last_auto_translate_time"] = now
 
-    st.divider()
-    st.markdown("**🔊 번역 결과 음성 (선택)**")
-    voice_options = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-    default_voice_index = (
-        voice_options.index(tts_voice) if tts_voice in voice_options else 0
-    )
-    voice = st.selectbox(
-        "음성 선택",
-        voice_options,
-        index=default_voice_index,
-        help="OpenAI TTS 보이스 선택",
-    )
-    if st.button("번역 결과 듣기"):
-        translated_text = st.session_state.get("translation_result", "").strip()
-        if not translated_text:
-            st.warning("먼저 번역을 완료해주세요.")
-            return
-        if not api_key:
-            st.error("OpenAI API 키가 필요합니다. .env를 확인해주세요.")
-            return
-        if not tts_model:
-            st.error("TTS 모델이 비어있어요. OPENAI_TTS_MODEL을 설정해주세요.")
-            return
-        if tts_model == "gpt-5-mini-tts":
-            st.error("gpt-5-mini-tts는 지원되지 않습니다. gpt-4o-mini-tts 또는 tts-1/tts-1-hd를 사용하세요.")
-            return
-        with st.spinner("음성 생성 중..."):
-            try:
-                audio_bytes = text_to_speech(translated_text, api_key, tts_model, voice)
-            except Exception as exc:  # pragma: no cover - network
-                st.error(f"음성 생성 실패: {exc}")
+        if auto_translate and source_text.strip():
+            last_text = st.session_state.get("last_auto_translate_text", "")
+            last_time = st.session_state.get("last_auto_translate_time", 0.0)
+            now = time.time()
+            if source_text.strip() != last_text and now - last_time >= AUTO_TRANSLATE_COOLDOWN_SEC:
+                translated = _do_translate(source_text.strip())
+                if translated is not None:
+                    st.session_state["translation_result"] = translated
+                    st.session_state["last_auto_translate_text"] = source_text.strip()
+                    st.session_state["last_auto_translate_time"] = now
+
+        st.divider()
+        st.markdown("**🔊 번역 결과 음성 (선택)**")
+        voice_options = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        default_voice_index = (
+            voice_options.index(tts_voice) if tts_voice in voice_options else 0
+        )
+        voice = st.selectbox(
+            "음성 선택",
+            voice_options,
+            index=default_voice_index,
+            help="OpenAI TTS 보이스 선택",
+        )
+        if st.button("번역 결과 듣기"):
+            translated_text = st.session_state.get("translation_result", "").strip()
+            if not translated_text:
+                st.warning("먼저 번역을 완료해주세요.")
                 return
-        st.audio(audio_bytes, format="audio/mp3")
+            if not api_key:
+                st.error("OpenAI API 키가 필요합니다. .env를 확인해주세요.")
+                return
+            if not tts_model:
+                st.error("TTS 모델이 비어있어요. OPENAI_TTS_MODEL을 설정해주세요.")
+                return
+            if tts_model == "gpt-5-mini-tts":
+                st.error("gpt-5-mini-tts는 지원되지 않습니다. gpt-4o-mini-tts 또는 tts-1/tts-1-hd를 사용하세요.")
+                return
+            with st.spinner("음성 생성 중..."):
+                try:
+                    audio_bytes = text_to_speech(translated_text, api_key, tts_model, voice)
+                except Exception as exc:  # pragma: no cover - network
+                    st.error(f"음성 생성 실패: {exc}")
+                    return
+            st.audio(audio_bytes, format="audio/mp3")
+
+    with tab_photo:
+        st.markdown("**📷 사진 번역 (수동)**")
+        st.caption("카메라 촬영 또는 이미지 업로드 후 버튼을 눌러 번역하세요.")
+
+        input_mode = st.radio(
+            "사진 입력 방식",
+            ["선택 안 함", "카메라 촬영", "이미지 업로드"],
+            horizontal=True,
+        )
+
+        camera_image = None
+        upload_image = None
+        if input_mode == "카메라 촬영":
+            camera_image = st.camera_input("카메라 촬영")
+        elif input_mode == "이미지 업로드":
+            upload_image = st.file_uploader(
+                "이미지 업로드",
+                type=["png", "jpg", "jpeg", "webp"],
+                accept_multiple_files=False,
+            )
+
+        image_file = camera_image or upload_image
+        if image_file is not None:
+            st.image(image_file, use_column_width=True)
+
+        if st.button("사진에서 번역하기"):
+            if not api_key:
+                st.error("OpenAI API 키가 필요합니다. .env 또는 Secrets를 확인해주세요.")
+            elif not ocr_model:
+                st.error("OCR 모델이 비어있어요. OPENAI_OCR_MODEL을 설정해주세요.")
+            elif image_file is None:
+                st.warning("먼저 카메라 촬영 또는 이미지 업로드를 해주세요.")
+            else:
+                with st.spinner("이미지 텍스트 추출 중..."):
+                    try:
+                        image_bytes = image_file.getvalue()
+                        mime_type = getattr(image_file, "type", None) or "image/jpeg"
+                        ocr_text = extract_text_from_image(image_bytes, mime_type, api_key, ocr_model)
+                    except Exception as exc:  # pragma: no cover - network
+                        st.error(f"OCR 실패: {exc}")
+                        ocr_text = ""
+                if not ocr_text.strip():
+                    st.warning("이미지에서 텍스트를 찾지 못했어요. 다른 사진을 시도해보세요.")
+                else:
+                    st.session_state["photo_source_text"] = ocr_text
+                    translated = _do_translate(ocr_text.strip())
+                    if translated is not None:
+                        st.session_state["photo_translation_result"] = translated
+
+        st.divider()
+        colp1, colp2 = st.columns(2)
+        with colp1:
+            st.text_area(
+                "사진에서 추출된 텍스트",
+                height=180,
+                value=st.session_state.get("photo_source_text", ""),
+                disabled=True,
+            )
+        with colp2:
+            st.text_area(
+                "사진 번역 결과",
+                height=180,
+                value=st.session_state.get("photo_translation_result", ""),
+                disabled=True,
+            )
 
 
 def render_sidebar() -> str:
