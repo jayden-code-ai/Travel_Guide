@@ -441,7 +441,8 @@ def render_map_section(maps_api_key: str, df: pd.DataFrame) -> None:
     st.markdown("<div class='section-title'>🗺️ 지도</div>", unsafe_allow_html=True)
     st.caption("일정에 있는 장소를 지도에서 확인해요.")
 
-    places = sorted({p for p in df["장소"].dropna().tolist() if p.strip()})
+    view = build_view_df(df)
+    places = sorted({p for p in view["지도표시"].dropna().tolist() if p.strip()})
     choice = st.selectbox("장소 선택", ["직접 입력"] + places)
     if choice == "직접 입력":
         place = st.text_input("장소 입력", placeholder="예: 하카타역")
