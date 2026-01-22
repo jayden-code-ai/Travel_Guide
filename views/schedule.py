@@ -107,21 +107,19 @@ def render_editor(df: pd.DataFrame):
     st.markdown("<div class='section-title'>✍️ 일정 수정</div>", unsafe_allow_html=True)
     st.caption("수정 후 자동 저장됩니다.")
 
-    def _auto_save():
-        edited = st.session_state.get("schedule_editor")
-        if isinstance(edited, pd.DataFrame):
-            data_manager.save_schedule(edited)
-            st.toast("저장되었습니다! ✅")
-
-    st.data_editor(
+    edited_df = st.data_editor(
         df,
-        on_change=_auto_save,
         num_rows="dynamic",
         use_container_width=True,
         hide_index=True,
         column_order=config.EXPECTED_COLS,
         key="schedule_editor"
     )
+
+    if st.button("💾 변경사항 저장하기", type="primary"):
+        data_manager.save_schedule(edited_df)
+        st.toast("일정이 저장되었습니다! ✅")
+        st.success("저장 완료!")
 
 def render():
     st.markdown("<div class='section-title'>🗓️ 여행 일정</div>", unsafe_allow_html=True)
