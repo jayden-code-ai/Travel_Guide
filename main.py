@@ -6,17 +6,17 @@ from utils import style
 from views import schedule, map, translate, weather, expenses, gallery
 
 def main():
-    # Page Config
+    # 페이지 설정
     st.set_page_config(
         page_title=config.APP_TITLE,
         page_icon="🧳",
         layout="wide"
     )
     
-    # Inject CSS
+    # CSS 주입
     style.inject_response_css()
 
-    # Sidebar / Navigation
+    # 사이드바 / 내비게이션
     with st.sidebar:
         st.markdown(f"### {config.APP_TITLE}")
         
@@ -42,7 +42,7 @@ def main():
             f"**숙소**: {config.HOTEL_NAME}"
         )
 
-    # Main Content
+    # 메인 콘텐츠
     st.title(config.APP_TITLE)
     
     if selected == "일정 View":

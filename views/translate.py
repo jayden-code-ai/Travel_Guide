@@ -15,7 +15,7 @@ def render():
         st.error("OpenAI API 키가 필요합니다.")
         return
 
-    # Layout
+    # 레이아웃
     col_opt, col_blank = st.columns([1, 2])
     with col_opt:
         direction = st.radio("번역 방향", ["한국어 → 일본어", "일본어 → 한국어"], horizontal=True)
@@ -25,9 +25,9 @@ def render():
 
     tab_text, tab_photo = st.tabs(["💬 텍스트/음성", "📷 사진 번역"])
 
-    # --- TEXT/VOICE ---
+    # --- 텍스트/음성 ---
     with tab_text:
-        # Voice Input
+        # 음성 입력
         st.markdown("##### 🎙️ 음성 입력")
         if mic_recorder:
             col_mic, col_status = st.columns([1, 4])
@@ -40,12 +40,12 @@ def render():
                 )
             
             if audio and audio.get("bytes"):
-                # Check if this is new audio
+                # 새로운 오디오인지 확인
                 if audio["bytes"] != st.session_state.get("last_mic_audio"):
                     st.session_state["last_mic_audio"] = audio["bytes"]
                     st.audio(audio["bytes"], format="audio/wav")
                     
-                    # Auto Transcribe
+                    # 자동 텍스트 변환
                     lang_code = "ko" if source_lang == "Korean" else "ja"
                     with st.spinner("음성을 텍스트로 변환 중..."):
                         transcript = openai_helper.transcribe_audio(
@@ -59,10 +59,10 @@ def render():
 
         st.divider()
 
-        # Text Input & Result
+        # 텍스트 입력 및 결과
         col1, col2 = st.columns(2)
         with col1:
-             # Widget will pick up value from st.session_state["source_text_input"]
+             # 위젯이 st.session_state["source_text_input"] 값을 가져옴
             source_text = st.text_area("입력", height=150, key="source_text_input", placeholder="번역할 내용을 입력하세요.")
         with col2:
             st.text_area(
@@ -92,13 +92,13 @@ def render():
                         target_text, config.OPENAI_API_KEY, 
                         config.OPENAI_TTS_MODEL, config.OPENAI_TTS_VOICE
                     )
-                    # Use a hash of the audio data (or text) to force re-render of the audio player
-                    # This is crucial for mobile compatibility and preventing stale audio
+                    # 오디오 데이터(또는 텍스트)의 해시값을 사용하여 오디오 플레이어 강제 리렌더링
+                    # 모바일 호환성 및 재생 오류 방지를 위해 필수
                     import hashlib
                     audio_hash = hashlib.md5(target_text.encode()).hexdigest()
                     st.audio(audio_data, format="audio/mp3", autoplay=True, key=f"tts_{audio_hash}")
 
-    # --- PHOTO ---
+    # --- 사진 ---
     with tab_photo:
         img_file = st.file_uploader("이미지 업로드", type=["png", "jpg", "jpeg"])
         if img_file:
@@ -111,7 +111,7 @@ def render():
                     )
                     if extracted:
                         translated = openai_helper.translate_text(
-                            extracted, "Any", "Korean", # Always translate to Korean for understanding
+                            extracted, "Any", "Korean", # 이해를 돕기 위해 항상 한국어로 번역
                             config.OPENAI_API_KEY, config.OPENAI_TRANSLATE_MODEL
                         )
                         st.session_state["ocr_extracted"] = extracted

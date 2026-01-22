@@ -6,7 +6,7 @@ def inject_response_css():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap');
         
-        /* Default (Light Mode) Variables */
+        /* 기본 (라이트 모드) 변수 */
         :root {
             --bg-gradient: linear-gradient(180deg, #fff8f0 0%, #f7f8ff 60%, #fff 100%);
             --hero-bg: rgba(255, 242, 233, 0.9);
@@ -25,7 +25,7 @@ def inject_response_css():
             --sidebar-bg: #fffbf7;
         }
 
-        /* Dark Mode Overrides - Direct overrides to ensure application */
+        /* 다크 모드 재정의 - 적용 보장을 위한 직접 재정의 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg-gradient: linear-gradient(180deg, #121212 0%, #1e1e24 50%, #121212 100%);
@@ -45,31 +45,31 @@ def inject_response_css():
                 --sidebar-bg: #1e1e24;
             }
             
-            /* Force Streamlit App Background to Dark in Dark Mode */
+            /* 다크 모드에서 Streamlit 앱 배경 강제 어둡게 설정 */
             .stApp {
                 background: var(--bg-gradient) !important;
                 background-color: #121212 !important; /* Fallback */
             }
             
-            /* Force Text Color in Dark Mode */
+            /* 다크 모드에서 텍스트 색상 강제 설정 */
             html, body, .stMarkdown, .stText, p, h1, h2, h3, h4, h5, h6, span, div {
                 color: var(--text-color) !important;
             }
         }
         
-        /* Global Font Settings */
+        /* 전역 폰트 설정 */
         html, body, [class*="css"]  {
             font-family: 'Gowun Dodum', sans-serif;
             color: var(--text-color);
         }
 
-        /* Gradient Background */
+        /* 그라데이션 배경 */
         .stApp {
             background: var(--bg-gradient);
             background-attachment: fixed;
         }
 
-        /* Hero Section */
+        /* 히어로 섹션 */
         .hero {
             background: var(--hero-bg);
             border: 2px dashed var(--hero-border);
@@ -85,7 +85,7 @@ def inject_response_css():
             margin-bottom: 8px;
         }
 
-        /* Section Titles */
+        /* 섹션 제목 */
         .section-title {
             font-family: 'Jua', sans-serif;
             font-size: 1.6rem;
@@ -97,7 +97,7 @@ def inject_response_css():
             padding-bottom: 4px;
         }
 
-        /* Schedule Card */
+        /* 일정 카드 */
         .schedule-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -116,7 +116,7 @@ def inject_response_css():
             color: var(--text-color) !important; 
         }
 
-        /* Pills and Badges */
+        /* 알약 및 배지 스타일 */
         .pill {
             display: inline-block;
             background: var(--pill-bg);
@@ -133,7 +133,7 @@ def inject_response_css():
             font-size: 0.9rem;
         }
 
-        /* Image Gallery */
+        /* 이미지 갤러리 */
         .gallery-img {
             border-radius: 12px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -143,12 +143,12 @@ def inject_response_css():
             transform: scale(1.02);
         }
 
-        /* Sidebar Customization */
+        /* 사이드바 커스터마이징 */
         [data-testid="stSidebar"] {
             background-color: var(--sidebar-bg) !important;
         }
         
-        /* Ensure inputs and other elements are readable in dark mode */
+        /* 다크 모드에서 입력 필드 및 기타 요소 가독성 확보 */
         @media (prefers-color-scheme: dark) {
             .stTextArea textarea, .stTextInput input, .stSelectbox div[data-baseweb="select"] {
                 color: #ffffff !important;
