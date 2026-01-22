@@ -92,7 +92,11 @@ def render():
                         target_text, config.OPENAI_API_KEY, 
                         config.OPENAI_TTS_MODEL, config.OPENAI_TTS_VOICE
                     )
-                    st.audio(audio_data, format="audio/mp3", autoplay=True)
+                    # Use a hash of the audio data (or text) to force re-render of the audio player
+                    # This is crucial for mobile compatibility and preventing stale audio
+                    import hashlib
+                    audio_hash = hashlib.md5(target_text.encode()).hexdigest()
+                    st.audio(audio_data, format="audio/mp3", autoplay=True, key=f"tts_{audio_hash}")
 
     # --- PHOTO ---
     with tab_photo:
