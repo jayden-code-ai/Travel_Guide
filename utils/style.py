@@ -1,6 +1,10 @@
+"""앱 전반의 스타일(CSS/JS)을 주입하는 유틸리티."""
+
 import streamlit as st
 
 def inject_response_css():
+    """Streamlit 앱에 커스텀 CSS/JS를 주입해 디자인과 동작을 개선한다."""
+    # Markdown에 <style>과 <script>를 포함해 전체 스타일/행동을 적용
     st.markdown(
         """
         <style>
@@ -48,7 +52,7 @@ def inject_response_css():
             /* 다크 모드에서 Streamlit 앱 배경 강제 어둡게 설정 */
             .stApp {
                 background: var(--bg-gradient) !important;
-                background-color: #121212 !important; /* Fallback */
+                background-color: #121212 !important; /* 대체 색상 */
             }
             
             /* 다크 모드에서 텍스트 색상 강제 설정 */

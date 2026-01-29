@@ -15,7 +15,7 @@
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run main.py
 ```
 
 ## 환경변수 (.env)
@@ -47,7 +47,7 @@ GOOGLE_MAPS_API_KEY="..."
 
 ## 배포 체크리스트
 - [ ] `requirements.txt` 최신화
-- [ ] `streamlit run app.py` 로컬 실행 확인
+- [ ] `streamlit run main.py` 로컬 실행 확인
 - [ ] `.env` 커밋되지 않았는지 확인
 - [ ] Streamlit Secrets 입력 완료
 - [ ] 지도/번역/음성 기능 동작 확인
@@ -66,6 +66,7 @@ GOOGLE_MAPS_API_KEY="..."
 ## 데이터 파일
 - `data/schedule.csv` : 일정 원본 데이터
 - `data/schedule.backup.csv` : 자동 백업 (git ignore)
+- `data/candidates.csv` : 지도 후보 리스트
 
 ## 일정 편집 팁
 `data/schedule.csv`에 `지도검색어` 컬럼을 채우면 지도 링크가 더 정확해집니다.  
